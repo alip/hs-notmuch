@@ -1,0 +1,5 @@
+# hs-notmuch
+[Haskell](http://www.haskell.org/) bindings to the
+[notmuch](http://notmuchmail.org/) mail indexing library.
+
+<!-- vim: set ft=mkd spell spelllang=en sw=4 sts=4 et : -->
