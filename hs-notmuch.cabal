@@ -1,0 +1,20 @@
+Name:                hs-notmuch
+Version:             0.1
+Synopsis:            Haskell bindings to notmuch mail indexing library
+Homepage:            http://github.com/alip/hs-notmuch
+License:             GPL-3
+License-file:        LICENSE
+Author:              Ali Polatel
+Maintainer:          alip@exherbo.org
+Category:            Email
+Build-type:          Custom
+Extra-source-files:  README.mkd
+Cabal-version:       >=1.2
+
+
+Library
+  Exposed-modules:
+      Email.Notmuch
+  Build-Depends: base >= 3 && < 5
+  Build-tools: c2hs
+
