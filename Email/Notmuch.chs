@@ -219,8 +219,8 @@ statusStr = unsafePerformIO . peekCString . {#call pure unsafe status_to_string#
     printing an error message on stderr).
 -}
 databaseCreate :: FilePath -> IO Database
-databaseCreate p = withCString p (\p' -> {#call unsafe database_create#} p') >>=
-             (\db -> if db == nullPtr then throw DatabaseError else return db)
+databaseCreate p = withCString p {#call unsafe database_create#} >>=
+                   (\db -> if db == nullPtr then throw DatabaseError else return db)
 
 {-|
     Open an existing notmuch database located at 'FilePath'.
@@ -239,8 +239,8 @@ databaseCreate p = withCString p (\p' -> {#call unsafe database_create#} p') >>=
     printing an error message on stderr).
 -}
 databaseOpen :: FilePath -> DatabaseOpenMode -> IO Database
-databaseOpen p m = withCString p (\p' -> {#call unsafe database_open#} p' (cFromEnum m)) >>=
-             (\db -> if db == nullPtr then throw DatabaseError else return db)
+databaseOpen p m = withCString p (flip {#call unsafe database_open#} (cFromEnum m)) >>=
+                   (\db -> if db == nullPtr then throw DatabaseError else return db)
 
 {-|
     Close the given notmuch database, freeing all associated resources.
@@ -266,9 +266,7 @@ databaseVersion = fromIntegral . {#call pure unsafe database_get_version#}
     work unless the function 'databaseUpgrade' is called successfully first.
 -}
 databaseNeedsUpgrade :: Database -> Bool
-databaseNeedsUpgrade d = not (up == 0)
-                         where
-                              up = {#call pure unsafe database_needs_upgrade#} d
+databaseNeedsUpgrade d = {#call pure unsafe database_needs_upgrade#} d /= 0
 
 {-|
     Upgrade the current database.
@@ -292,7 +290,7 @@ databaseUpgrade d = do
     Throws 'XapianError' if a Xapian exception occurs.
 -}
 databaseGetDirectory :: Database -> FilePath -> IO Directory
-databaseGetDirectory d p = withCString p (\p' -> {#call unsafe database_get_directory#} d p') >>=
+databaseGetDirectory d p = withCString p ({#call unsafe database_get_directory#} d) >>=
                            (\dir -> if dir == nullPtr then throw XapianError else return dir)
 
 {-|
@@ -329,7 +327,7 @@ databaseAddMessage d p = withCString p (\p' -> alloca $ \ptr -> do
 -}
 databaseRemoveMessage :: Database -> FilePath -> IO Status
 databaseRemoveMessage d p = do
-                              s <- withCString p (\p' -> {#call database_remove_message#} d p')
+                              s <- withCString p ({#call database_remove_message#} d)
                               return (toEnum (fromIntegral s))
 
 {-|
@@ -358,7 +356,7 @@ databaseGetAllTags d = {#call unsafe database_get_all_tags#} d >>=
     Will throw 'MemoryError' if insufficient memory is available.
 -}
 queryCreate :: Database -> QueryString -> IO Query
-queryCreate d s = withCString s (\s' -> {#call unsafe query_create#} d s') >>=
+queryCreate d s = withCString s ({#call unsafe query_create#} d) >>=
                   (\q -> if q == nullPtr then throw MemoryError else return q)
 
 -- |Specify the sorting desired for this query.
@@ -400,9 +398,7 @@ queryDestroy = {#call unsafe query_destroy#}
     return 'nullPtr'.
 -}
 threadsValid :: Threads -> Bool
-threadsValid ts = not (val == 0)
-                  where
-                       val = {#call pure unsafe threads_valid#} ts
+threadsValid ts = {#call pure unsafe threads_valid#} ts /= 0
 
 {-|
     Get the current thread from 'Threads' as a 'Thread'.
@@ -521,9 +517,8 @@ threadDestroy = {#call unsafe thread_destroy#}
 --{{{ Messages
 -- |Is the given 'Messages' iterator pointing at a valid message.
 messagesValid :: Messages -> Bool
-messagesValid ms = not (val == 0)
-                   where
-                        val = {#call pure unsafe messages_valid#} ms
+messagesValid ms = {#call pure unsafe messages_valid#} ms /= 0
+
 {-|
     Get the current message from 'Messages' as a 'Message'.
 
@@ -603,9 +598,7 @@ messageFileName = unsafePerformIO . peekCString . {#call pure unsafe message_get
 
 -- |Get a value of a 'MessageFlag' for the email corresponding to 'Message'
 messageGetFlag :: Message -> MessageFlag -> Bool
-messageGetFlag m f = not (flag == 0)
-                     where
-                          flag = {#call pure unsafe message_get_flag#} m (cFromEnum f)
+messageGetFlag m f = {#call pure unsafe message_get_flag#} m (cFromEnum f) /= 0
 
 -- |Set a value of a 'MessageFlag' for the email corresponding to 'Message'
 messageSetFlag :: Message -> MessageFlag -> Bool -> ()
@@ -633,7 +626,7 @@ messageDate = fromIntegral . {#call pure unsafe message_get_date#}
     Throws 'MaildirError' if any error occurs.
 -}
 messageHeader :: Message -> Header -> IO String
-messageHeader m h = withCString h (\h' -> {#call unsafe message_get_header#} m h') >>=
+messageHeader m h = withCString h ({#call unsafe message_get_header#} m) >>=
                     (\v -> if v == nullPtr then throw MaildirError else peekCString v)
 
 {-|
@@ -650,13 +643,13 @@ messageTags = {#call pure unsafe message_get_tags#}
 -- |Add a tag to the given message.
 messageAddTag :: Message -> Tag -> IO Status
 messageAddTag m t = do
-                      s <- withCString t (\t' -> {#call unsafe message_add_tag#} m t')
+                      s <- withCString t ({#call unsafe message_add_tag#} m)
                       return (toEnum (fromIntegral s))
 
 -- |Remove a tag from the given message.
 messageRemoveTag :: Message -> Tag -> IO Status
 messageRemoveTag m t = do
-                         s <- withCString t (\t' -> {#call unsafe message_remove_tag#} m t')
+                         s <- withCString t ({#call unsafe message_remove_tag#} m)
                          return (toEnum (fromIntegral s))
 
 -- |Remove all tags from the given message.
@@ -696,9 +689,7 @@ messageDestroy = {#call unsafe message_destroy#}
 --{{{ Tags
 -- |Is the given 'Tags' iterator pointing at a valid tag.
 tagsValid :: Tags -> Bool
-tagsValid ts = not (val == 0)
-               where
-                    val = {#call pure unsafe tags_valid#} ts
+tagsValid ts = {#call pure unsafe tags_valid#} ts /= 0
 
 {-|
     Get the current tag from 'Tags' as a 'Tag'.
@@ -782,9 +773,7 @@ directoryDestroy = {#call unsafe directory_destroy#}
 --{{{ FileNames
 -- |Is the given 'Filenames' iterator pointing at a valid filename.
 filenamesValid :: FileNames -> Bool
-filenamesValid f = not (val == 0)
-                   where
-                        val = {#call pure unsafe filenames_valid#} f
+filenamesValid f = {#call pure unsafe filenames_valid#} f /= 0
 
 -- |Get the current filename from 'Filenames' as a 'FilePath'.
 filenamesGet :: FileNames -> FilePath
