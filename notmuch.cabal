@@ -12,6 +12,7 @@ data-files:    README.mkd
 cabal-version: >=1.2
 
 library
+  hs-source-dirs: src
   exposed-modules:
       Email.Notmuch
   build-depends: base >=3 && < 5

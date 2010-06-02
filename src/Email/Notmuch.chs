@@ -31,12 +31,13 @@ module Email.Notmuch (
     CommaSeparatedString,         -- = String
     Count,                        -- = Integer
     Header,                       -- = String
+    Subject,                      -- = String
     Tag,                          -- = String
     Time,                         -- = Integer
     Version,                      -- = Integer
 
     Status(..),
-    statusStr,                    -- :: Status -> String
+    statusStr,                    -- :: Status -> IO String
 
     DatabaseError,
     MaildirError,
@@ -48,9 +49,9 @@ module Email.Notmuch (
     databaseCreate,               -- :: FilePath -> IO Database
     databaseOpen,                 -- :: FilePath -> DatabaseOpenMode -> IO Database
     databaseClose,                -- :: Database -> IO ()
-    databasePath,                 -- :: Database -> FilePath
-    databaseVersion,              -- :: Database -> Version
-    databaseNeedsUpgrade,         -- :: Database -> Bool
+    databasePath,                 -- :: Database -> IO FilePath
+    databaseVersion,              -- :: Database -> IO Version
+    databaseNeedsUpgrade,         -- :: Database -> IO Bool
     databaseUpgrade,              -- :: Database -> IO Status
     databaseGetDirectory,         -- :: Database -> FilePath -> IO Directory
     databaseAddMessage,           -- :: Database -> FilePath -> IO (Status, Message)
@@ -67,43 +68,43 @@ module Email.Notmuch (
     queryDestroy,                 -- :: Query -> IO ()
 
     Threads,                      -- = Ptr NotmuchThreads
-    threadsValid,                 -- :: Threads -> Bool
+    threadsValid,                 -- :: Threads -> IO Bool
     threadsGet,                   -- :: Threads -> IO Thread
-    threadsMoveToNext,            -- :: Threads -> ()
+    threadsMoveToNext,            -- :: Threads -> IO ()
     threadsDestroy,               -- :: Threads -> IO ()
 
     Thread,                       -- = Ptr NotmuchThread
     ThreadId,                     -- = String
-    threadId,                     -- :: Thread -> ThreadId
-    threadTotalMessages,          -- :: Thread -> Count
-    threadTopLevelMessages,       -- :: Thread -> Messages
-    threadMatchedMessages,        -- :: Thread -> Count
-    threadAuthors,                -- :: Thread -> CommaSeparatedString
-    threadSubject,                -- :: Thread -> String
-    threadOldestDate,             -- :: Thread -> Time
-    threadNewestDate,             -- :: Thread -> Time
-    threadTags,                   -- :: Thread -> Tags
+    threadId,                     -- :: Thread -> IO ThreadId
+    threadTotalMessages,          -- :: Thread -> IO Count
+    threadTopLevelMessages,       -- :: Thread -> IO Messages
+    threadMatchedMessages,        -- :: Thread -> IO Count
+    threadAuthors,                -- :: Thread -> IO CommaSeparatedString
+    threadSubject,                -- :: Thread -> IO String
+    threadOldestDate,             -- :: Thread -> IO Time
+    threadNewestDate,             -- :: Thread -> IO Time
+    threadTags,                   -- :: Thread -> IO Tags
     threadDestroy,                -- :: Thread -> IO ()
 
     Messages,                     -- = Ptr NotmuchMessages
-    messagesValid,                -- :: Messages -> Bool
+    messagesValid,                -- :: Messages -> IO Bool
     messagesGet,                  -- :: Messages -> IO Message
-    messagesMoveToNext,           -- :: Messages -> ()
+    messagesMoveToNext,           -- :: Messages -> IO ()
     messagesCollectTags,          -- :: Messages -> IO Tags
     messagesDestroy,              -- :: Messages -> IO ()
 
     Message,                      -- = Ptr NotmuchMessage
     MessageFlag(..),
     MessageId,                    -- = String
-    messageId,                    -- :: Message -> MessageId
-    messageThreadId,              -- :: Message -> ThreadId
-    messageReplies,               -- :: Message -> Messages
-    messageFileName,              -- :: Message -> FilePath
-    messageGetFlag,               -- :: Message -> MessageFlag -> Bool
-    messageSetFlag,               -- :: Message -> MessageFlag -> Bool -> ()
-    messageDate,                  -- :: Message -> Time
+    messageId,                    -- :: Message -> IO MessageId
+    messageThreadId,              -- :: Message -> IO ThreadId
+    messageReplies,               -- :: Message -> IO Messages
+    messageFileName,              -- :: Message -> IO FilePath
+    messageGetFlag,               -- :: Message -> MessageFlag -> IO Bool
+    messageSetFlag,               -- :: Message -> MessageFlag -> Bool -> IO ()
+    messageDate,                  -- :: Message -> IO Time
     messageHeader,                -- :: Message -> Header -> IO String
-    messageTags,                  -- :: Message -> Tags
+    messageTags,                  -- :: Message -> IO Tags
     messageAddTag,                -- :: Message -> Tag -> IO Status
     messageRemoveTag,             -- :: Message -> Tag -> IO Status
     messageRemoveAllTags,         -- :: Message -> IO Status
@@ -112,22 +113,22 @@ module Email.Notmuch (
     messageDestroy,               -- :: Message -> IO ()
 
     Tags,                         -- = Ptr NotmuchTags
-    tagsValid,                    -- :: Tags -> Bool
-    tagsGet,                      -- :: Tags -> Tag
-    tagsMoveToNext,               -- :: Tags -> ()
+    tagsValid,                    -- :: Tags -> IO Bool
+    tagsGet,                      -- :: Tags -> IO Tag
+    tagsMoveToNext,               -- :: Tags -> IO ()
     tagsDestroy,                  -- :: Tags -> IO ()
 
     Directory,                    -- = Ptr NotmuchDirectory
     directorySetMtime,            -- :: Directory -> Time -> IO Status
-    directoryGetMtime,            -- :: Directory -> Time
+    directoryGetMtime,            -- :: Directory -> IO Time
     directoryGetChildFiles,       -- :: Directory -> IO FileNames
     directoryGetChildDirectories, -- :: Directory -> IO FileNames
     directoryDestroy,             -- :: Database -> IO ()
 
     FileNames,                    -- = Ptr NotmuchFileNames
-    filenamesValid,               -- :: FileNames -> Bool
-    filenamesGet,                 -- :: FileNames -> FilePath
-    filenamesMoveToNext,          -- :: FileNames -> ()
+    filenamesValid,               -- :: FileNames -> IO Bool
+    filenamesGet,                 -- :: FileNames -> IO FilePath
+    filenamesMoveToNext,          -- :: FileNames -> IO ()
     filenamesDestroy              -- :: FileNames -> IO ()
     ) where
 --}}}
@@ -166,6 +167,7 @@ import Foreign.Ptr      (nullPtr, nullFunPtr)
 type CommaSeparatedString   = String
 type Count                  = Integer
 type Header                 = String
+type Subject                = String
 type Tag                    = String
 type Time                   = Integer
 type Version                = Integer
@@ -196,8 +198,8 @@ cFromEnum = fromIntegral . fromEnum
 --}}}
 --{{{ Status
 -- |Get a string representation of the 'Status' value.
-statusStr :: Status -> String
-statusStr = unsafePerformIO . peekCString . {#call pure unsafe status_to_string#} . cFromEnum
+statusStr :: Status -> IO String
+statusStr = peekCString . {#call pure unsafe status_to_string#} . cFromEnum
 --}}}
 --{{{ Database
 {-|
@@ -251,12 +253,14 @@ databaseClose :: Database -> IO ()
 databaseClose = {#call unsafe database_close#}
 
 -- |Return the database path of the given database.
-databasePath :: Database -> FilePath
-databasePath = unsafePerformIO . peekCString . {#call pure unsafe database_get_path#}
+databasePath :: Database -> IO FilePath
+databasePath d = peekCString =<< {#call unsafe database_get_path#} d
 
 -- |Return the database format version of the given database.
-databaseVersion :: Database -> Version
-databaseVersion = fromIntegral . {#call pure unsafe database_get_version#}
+databaseVersion :: Database -> IO Version
+databaseVersion d = do
+                    v <- {#call unsafe database_get_version#} d
+                    return $ fromIntegral v
 
 {-|
     Does this database need to be upgraded before writing to it?
@@ -265,8 +269,10 @@ databaseVersion = fromIntegral . {#call pure unsafe database_get_version#}
     ('databaseAddMessage', 'messageAddTag', 'directorySetMtime', etc.) will
     work unless the function 'databaseUpgrade' is called successfully first.
 -}
-databaseNeedsUpgrade :: Database -> Bool
-databaseNeedsUpgrade d = {#call pure unsafe database_needs_upgrade#} d /= 0
+databaseNeedsUpgrade :: Database -> IO Bool
+databaseNeedsUpgrade d = do
+                         b <- {#call unsafe database_needs_upgrade#} d
+                         return $ b /= 0
 
 {-|
     Upgrade the current database.
@@ -277,8 +283,8 @@ databaseNeedsUpgrade d = {#call pure unsafe database_needs_upgrade#} d /= 0
 -}
 databaseUpgrade :: Database -> IO Status
 databaseUpgrade d = do
-                      s <- {#call unsafe database_upgrade#} d nullFunPtr nullPtr
-                      return (toEnum (fromIntegral s))
+                    s <- {#call unsafe database_upgrade#} d nullFunPtr nullPtr
+                    return $ toEnum $ fromIntegral s
 
 {-|
     Retrieve a directory object from the database for 'FilePath'.
@@ -312,9 +318,10 @@ databaseGetDirectory d p = withCString p ({#call unsafe database_get_directory#}
 -}
 databaseAddMessage :: Database -> FilePath -> IO (Status, Message)
 databaseAddMessage d p = withCString p (\p' -> alloca $ \ptr -> do
-                          s <- {#call unsafe database_add_message#} d p' ptr
-                          m <- peek ptr
-                          return (toEnum (fromIntegral s), m))
+                         s <- {#call unsafe database_add_message#} d p' ptr
+                         m <- peek ptr
+                         return (toEnum $ fromIntegral s, m))
+
 {-|
     Remove a message from the given notmuch database.
 
@@ -327,8 +334,8 @@ databaseAddMessage d p = withCString p (\p' -> alloca $ \ptr -> do
 -}
 databaseRemoveMessage :: Database -> FilePath -> IO Status
 databaseRemoveMessage d p = do
-                              s <- withCString p ({#call database_remove_message#} d)
-                              return (toEnum (fromIntegral s))
+                            s <- withCString p ({#call database_remove_message#} d)
+                            return $ toEnum $ fromIntegral s
 
 {-|
     Return a list of all tags found in the database.
@@ -360,8 +367,8 @@ queryCreate d s = withCString s ({#call unsafe query_create#} d) >>=
                   (\q -> if q == nullPtr then throw MemoryError else return q)
 
 -- |Specify the sorting desired for this query.
-querySetSort :: Query -> QuerySort -> ()
-querySetSort q s = {#call pure unsafe query_set_sort#} q (cFromEnum s)
+querySetSort :: Query -> QuerySort -> IO ()
+querySetSort q s = {#call unsafe query_set_sort#} q (cFromEnum s)
 
 {-|
     Execute a query for threads, returning a 'Threads' type which can be used
@@ -397,8 +404,10 @@ queryDestroy = {#call unsafe query_destroy#}
     'Thread'. Whereas when this function returns 'False', 'threadsGet' will
     return 'nullPtr'.
 -}
-threadsValid :: Threads -> Bool
-threadsValid ts = {#call pure unsafe threads_valid#} ts /= 0
+threadsValid :: Threads -> IO Bool
+threadsValid ts = do
+                  b <- {#call unsafe threads_valid#} ts
+                  return $ b /= 0
 
 {-|
     Get the current thread from 'Threads' as a 'Thread'.
@@ -419,8 +428,8 @@ threadsGet ts = {#call unsafe threads_get#} ts >>=
     be moved to a point just beyond that last thread,
     (where 'threadsValid' will return 'False').
 -}
-threadsMoveToNext :: Threads -> ()
-threadsMoveToNext = {#call pure unsafe threads_move_to_next#}
+threadsMoveToNext :: Threads -> IO ()
+threadsMoveToNext = {#call unsafe threads_move_to_next#}
 
 {-|
     Destroy a 'Threads' type.
@@ -433,8 +442,8 @@ threadsDestroy = {#call unsafe threads_destroy#}
 --}}}
 --{{{ Thread
 -- |Get the thread ID of 'Thread'.
-threadId :: Thread -> ThreadId
-threadId = unsafePerformIO . peekCString . {#call pure unsafe thread_get_thread_id#}
+threadId :: Thread -> IO ThreadId
+threadId t = peekCString =<< {#call unsafe thread_get_thread_id#} t
 
 {-|
     Get the total number of messages in 'Thread'.
@@ -442,8 +451,10 @@ threadId = unsafePerformIO . peekCString . {#call pure unsafe thread_get_thread_
     This count consists of all messages in the database belonging to
     this thread. Contrast with 'threadMatchedMessages'.
 -}
-threadTotalMessages :: Thread -> Count
-threadTotalMessages = fromIntegral . {#call pure unsafe thread_get_total_messages#}
+threadTotalMessages :: Thread -> IO Count
+threadTotalMessages t = do
+                        s <- {#call unsafe thread_get_total_messages#} t
+                        return $ fromIntegral s
 
 {-|
    Get a 'Messages' iterator for the top-level messages in 'Thread'.
@@ -456,8 +467,8 @@ threadTotalMessages = fromIntegral . {#call pure unsafe thread_get_total_message
     over the result of 'messageReplies' for each top-level message (and do that
     recursively for the resulting messages, etc.).
 -}
-threadTopLevelMessages :: Thread -> Messages
-threadTopLevelMessages = {#call pure unsafe thread_get_toplevel_messages#}
+threadTopLevelMessages :: Thread -> IO Messages
+threadTopLevelMessages = {#call unsafe thread_get_toplevel_messages#}
 
 {-|
     Get the number of messages in 'Thread' that matched the search.
@@ -465,8 +476,10 @@ threadTopLevelMessages = {#call pure unsafe thread_get_toplevel_messages#}
     This count includes only the messages in this thread that were matched by
     the search from which the thread was created. Contrast with 'threadTotalMessages'.
 -}
-threadMatchedMessages :: Thread -> Count
-threadMatchedMessages = fromIntegral . {#call pure unsafe thread_get_matched_messages#}
+threadMatchedMessages :: Thread -> IO Count
+threadMatchedMessages t = do
+                          c <- {#call unsafe thread_get_matched_messages#} t
+                          return $ fromIntegral c
 
 {-|
     Get the authors of 'Thread'
@@ -474,8 +487,8 @@ threadMatchedMessages = fromIntegral . {#call pure unsafe thread_get_matched_mes
     The returned string is a comma-separated list of the names of the authors
     of mail messages in the query results that belong to this thread.
 -}
-threadAuthors :: Thread -> CommaSeparatedString
-threadAuthors = unsafePerformIO . peekCString . {#call pure unsafe thread_get_authors#}
+threadAuthors :: Thread -> IO CommaSeparatedString
+threadAuthors t = peekCString =<< {#call unsafe thread_get_authors#} t
 
 {-|
     Get the subject of 'Thread'
@@ -484,16 +497,20 @@ threadAuthors = unsafePerformIO . peekCString . {#call pure unsafe thread_get_au
     order---see 'querySetSort') in the query results that belongs to this
     thread.
 -}
-threadSubject :: Thread -> String
-threadSubject = unsafePerformIO . peekCString . {#call pure unsafe thread_get_authors#}
+threadSubject :: Thread -> IO Subject
+threadSubject t = peekCString =<< {#call unsafe thread_get_authors#} t
 
 -- |Get the date of the oldest message in 'Thread' as a 'Time' value.
-threadOldestDate :: Thread -> Time
-threadOldestDate = fromIntegral . {#call pure unsafe thread_get_oldest_date#}
+threadOldestDate :: Thread -> IO Time
+threadOldestDate t = do
+                     d <- {#call unsafe thread_get_oldest_date#} t
+                     return $ fromIntegral d
 
 -- |Get the date of the newest message in 'Thread' as a 'Time' value.
-threadNewestDate :: Thread -> Time
-threadNewestDate = fromIntegral . {#call pure unsafe thread_get_newest_date#}
+threadNewestDate :: Thread -> IO Time
+threadNewestDate t = do
+                     d <- {#call unsafe thread_get_newest_date#} t
+                     return $ fromIntegral d
 
 {-|
     Get the tags for 'Thread', returning a 'Tags' which can be used to iterate
@@ -507,8 +524,8 @@ threadNewestDate = fromIntegral . {#call pure unsafe thread_get_newest_date#}
     long as the thread is valid, (for example, until 'threadDestroy' or until
     the query from which it derived is destroyed).
 -}
-threadTags :: Thread -> Tags
-threadTags = {#call pure unsafe thread_get_tags#}
+threadTags :: Thread -> IO Tags
+threadTags = {#call unsafe thread_get_tags#}
 
 -- |Destroy a 'Thread'.
 threadDestroy :: Thread -> IO ()
@@ -516,8 +533,10 @@ threadDestroy = {#call unsafe thread_destroy#}
 --}}}
 --{{{ Messages
 -- |Is the given 'Messages' iterator pointing at a valid message.
-messagesValid :: Messages -> Bool
-messagesValid ms = {#call pure unsafe messages_valid#} ms /= 0
+messagesValid :: Messages -> IO Bool
+messagesValid ms = do
+                   v <- {#call unsafe messages_valid#} ms
+                   return $ v /= 0
 
 {-|
     Get the current message from 'Messages' as a 'Message'.
@@ -532,8 +551,8 @@ messagesGet ms = {#call unsafe messages_get#} ms >>=
                  (\m -> if m == nullPtr then throw MemoryError else return m)
 
 -- |Move the 'Messages' iterator to the next message.
-messagesMoveToNext :: Messages -> ()
-messagesMoveToNext = {#call pure unsafe messages_move_to_next#}
+messagesMoveToNext :: Messages -> IO ()
+messagesMoveToNext = {#call unsafe messages_move_to_next#}
 
 {-|
     Return a list of tags from all messages.
@@ -558,12 +577,12 @@ messagesDestroy = {#call unsafe messages_destroy#}
 --}}}
 --{{{ Message
 -- |Get the message ID of 'Message'.
-messageId :: Message -> MessageId
-messageId = unsafePerformIO . peekCString . {#call pure unsafe message_get_message_id#}
+messageId :: Message -> IO MessageId
+messageId m = peekCString =<< {#call unsafe message_get_message_id#} m
 
 -- |Get the thread ID of 'Message'.
-messageThreadId :: Message -> ThreadId
-messageThreadId = unsafePerformIO . peekCString . {#call pure unsafe message_get_thread_id#}
+messageThreadId :: Message -> IO ThreadId
+messageThreadId m = peekCString =<< {#call unsafe message_get_thread_id#} m
 
 {-|
     Get a 'Messages' iterator for all of the replies to 'Message'.
@@ -580,8 +599,8 @@ messageThreadId = unsafePerformIO . peekCString . {#call pure unsafe message_get
     (Note that messagesValid will accept that 'nullPtr' value as legitimate,
     and simply return 'False' for it.)
 -}
-messageReplies :: Message -> Messages
-messageReplies = {#call pure unsafe message_get_replies#}
+messageReplies :: Message -> IO Messages
+messageReplies = {#call unsafe message_get_replies#}
 
 {-|
     Get a filename for the email corresponding to 'message'.
@@ -593,17 +612,19 @@ messageReplies = {#call pure unsafe message_get_replies#}
     (that is, multiple files contain identical message IDs), this function will
     arbitrarily return a single one of those filenames.
 -}
-messageFileName :: Message -> FilePath
-messageFileName = unsafePerformIO . peekCString . {#call pure unsafe message_get_filename#}
+messageFileName :: Message -> IO FilePath
+messageFileName m = peekCString =<< {#call unsafe message_get_filename#} m
 
 -- |Get a value of a 'MessageFlag' for the email corresponding to 'Message'
-messageGetFlag :: Message -> MessageFlag -> Bool
-messageGetFlag m f = {#call pure unsafe message_get_flag#} m (cFromEnum f) /= 0
+messageGetFlag :: Message -> MessageFlag -> IO Bool
+messageGetFlag m f = do
+    v <- {#call unsafe message_get_flag#} m (cFromEnum f)
+    return $ v /= 0
 
 -- |Set a value of a 'MessageFlag' for the email corresponding to 'Message'
-messageSetFlag :: Message -> MessageFlag -> Bool -> ()
-messageSetFlag m f True  = {#call pure unsafe message_set_flag#} m (cFromEnum f) 1
-messageSetFlag m f False = {#call pure unsafe message_set_flag#} m (cFromEnum f) 0
+messageSetFlag :: Message -> MessageFlag -> Bool -> IO ()
+messageSetFlag m f True  = {#call unsafe message_set_flag#} m (cFromEnum f) 1
+messageSetFlag m f False = {#call unsafe message_set_flag#} m (cFromEnum f) 0
 
 {-|
     Get the date of 'Message' as a 'Time' value.
@@ -611,8 +632,10 @@ messageSetFlag m f False = {#call pure unsafe message_set_flag#} m (cFromEnum f)
     For the original textual representation of the Date header from the message
     call 'messageHeader' with a header value of \"date\".
 -}
-messageDate :: Message -> Time
-messageDate = fromIntegral . {#call pure unsafe message_get_date#}
+messageDate :: Message -> IO Time
+messageDate m = do
+                t <- {#call unsafe message_get_date#} m
+                return $ fromIntegral t
 
 {-|
     Get the value of the specified header from 'Message'.
@@ -637,26 +660,26 @@ messageHeader m h = withCString h ({#call unsafe message_get_header#} m) >>=
     long as the 'Message' is valid, (which is until the query from which it
     derived is destroyed).
 -}
-messageTags :: Message -> Tags
-messageTags = {#call pure unsafe message_get_tags#}
+messageTags :: Message -> IO Tags
+messageTags = {#call unsafe message_get_tags#}
 
 -- |Add a tag to the given message.
 messageAddTag :: Message -> Tag -> IO Status
 messageAddTag m t = do
-                      s <- withCString t ({#call unsafe message_add_tag#} m)
-                      return (toEnum (fromIntegral s))
+                    s <- withCString t ({#call unsafe message_add_tag#} m)
+                    return $ toEnum $ fromIntegral s
 
 -- |Remove a tag from the given message.
 messageRemoveTag :: Message -> Tag -> IO Status
 messageRemoveTag m t = do
-                         s <- withCString t ({#call unsafe message_remove_tag#} m)
-                         return (toEnum (fromIntegral s))
+                       s <- withCString t ({#call unsafe message_remove_tag#} m)
+                       return $ toEnum $ fromIntegral s
 
 -- |Remove all tags from the given message.
 messageRemoveAllTags :: Message -> IO Status
 messageRemoveAllTags m = do
-                           s <- {#call unsafe message_remove_all_tags#} m
-                           return (toEnum (fromIntegral s))
+                         s <- {#call unsafe message_remove_all_tags#} m
+                         return $ toEnum $ fromIntegral s
 {-|
     Freeze the current state of 'Message' within the 'Database'.
 
@@ -670,8 +693,8 @@ messageRemoveAllTags m = do
 -}
 messageFreeze :: Message -> IO Status
 messageFreeze m = do
-                    s <- {#call unsafe message_freeze#} m
-                    return (toEnum (fromIntegral s))
+                  s <- {#call unsafe message_freeze#} m
+                  return $ toEnum $ fromIntegral s
 
 {-|
     Thaw the current 'Message', synchronizing any changes that may have
@@ -679,8 +702,8 @@ messageFreeze m = do
 -}
 messageThaw :: Message -> IO Status
 messageThaw m = do
-                  s <- {#call unsafe message_thaw#} m
-                  return (toEnum (fromIntegral s))
+                s <- {#call unsafe message_thaw#} m
+                return $ toEnum $ fromIntegral s
 
 -- |Destroy a 'Message'
 messageDestroy :: Message -> IO ()
@@ -688,20 +711,20 @@ messageDestroy = {#call unsafe message_destroy#}
 --}}}
 --{{{ Tags
 -- |Is the given 'Tags' iterator pointing at a valid tag.
-tagsValid :: Tags -> Bool
-tagsValid ts = {#call pure unsafe tags_valid#} ts /= 0
+tagsValid :: Tags -> IO Bool
+tagsValid ts = do
+               v <- {#call unsafe tags_valid#} ts
+               return $ v /= 0
 
 {-|
     Get the current tag from 'Tags' as a 'Tag'.
-
-    If an out-of-memory situation occurs, this function throws 'MemoryError'.
 -}
-tagsGet :: Tags -> Tag
-tagsGet = unsafePerformIO . peekCString . {#call pure unsafe tags_get#}
+tagsGet :: Tags -> IO Tag
+tagsGet ts = peekCString =<< {#call unsafe tags_get#} ts
 
 -- |Move the 'Tags' iterator to the next tag.
-tagsMoveToNext :: Tags -> ()
-tagsMoveToNext = {#call pure unsafe tags_move_to_next#}
+tagsMoveToNext :: Tags -> IO ()
+tagsMoveToNext = {#call unsafe tags_move_to_next#}
 
 -- |Destroy 'Tags'
 tagsDestroy :: Tags -> IO ()
@@ -734,8 +757,8 @@ tagsDestroy = {#call unsafe tags_destroy#}
 -}
 directorySetMtime :: Directory -> Time -> IO Status
 directorySetMtime d t = do
-                          s <- {#call unsafe directory_set_mtime#} d (cFromEnum t)
-                          return (toEnum (fromIntegral s))
+                        s <- {#call unsafe directory_set_mtime#} d (cFromEnum t)
+                        return $ toEnum $ fromIntegral s
 
 {-|
     Get the mtime of a directory, (as previously stored with
@@ -743,8 +766,10 @@ directorySetMtime d t = do
 
     Returns 0 if no mtime has previously been stored for this directory.
 -}
-directoryGetMtime :: Directory -> Time
-directoryGetMtime = fromIntegral . {#call pure unsafe directory_get_mtime#}
+directoryGetMtime :: Directory -> IO Time
+directoryGetMtime d = do
+                      t <- {#call unsafe directory_get_mtime#} d
+                      return $ fromIntegral t
 
 {-|
     Get a 'FileNames' iterator listing all the filenames of messages in the
@@ -772,16 +797,18 @@ directoryDestroy = {#call unsafe directory_destroy#}
 --}}}
 --{{{ FileNames
 -- |Is the given 'Filenames' iterator pointing at a valid filename.
-filenamesValid :: FileNames -> Bool
-filenamesValid f = {#call pure unsafe filenames_valid#} f /= 0
+filenamesValid :: FileNames -> IO Bool
+filenamesValid f = do
+                   v <- {#call unsafe filenames_valid#} f
+                   return $ v /= 0
 
 -- |Get the current filename from 'Filenames' as a 'FilePath'.
-filenamesGet :: FileNames -> FilePath
-filenamesGet = unsafePerformIO . peekCString . {#call pure unsafe filenames_get#}
+filenamesGet :: FileNames -> IO FilePath
+filenamesGet f = peekCString =<< {#call unsafe filenames_get#} f
 
 -- |Move the 'Filenames' iterator to the next filename.
-filenamesMoveToNext :: FileNames -> ()
-filenamesMoveToNext = {#call pure unsafe filenames_move_to_next#}
+filenamesMoveToNext :: FileNames -> IO ()
+filenamesMoveToNext = {#call unsafe filenames_move_to_next#}
 
 -- |Destroy 'FileNames'
 filenamesDestroy :: FileNames -> IO ()
