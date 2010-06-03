@@ -498,7 +498,7 @@ threadAuthors t = peekCString =<< {#call unsafe thread_get_authors#} t
     thread.
 -}
 threadSubject :: Thread -> IO Subject
-threadSubject t = peekCString =<< {#call unsafe thread_get_authors#} t
+threadSubject t = peekCString =<< {#call unsafe thread_get_subject#} t
 
 -- |Get the date of the oldest message in 'Thread' as a 'Time' value.
 threadOldestDate :: Thread -> IO Time
