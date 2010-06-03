@@ -17,4 +17,4 @@ library
       Email.Notmuch
   build-depends: base >=3 && < 5
   build-tools: c2hs
-
+  extra-libraries: notmuch
