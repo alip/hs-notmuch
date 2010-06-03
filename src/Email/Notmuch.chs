@@ -488,7 +488,8 @@ threadMatchedMessages t = do
     of mail messages in the query results that belong to this thread.
 -}
 threadAuthors :: Thread -> IO CommaSeparatedString
-threadAuthors t = peekCString =<< {#call unsafe thread_get_authors#} t
+threadAuthors t = (\auth -> if auth == nullPtr then return "" else peekCString auth) =<<
+                  {#call unsafe thread_get_authors#} t
 
 {-|
     Get the subject of 'Thread'
@@ -498,7 +499,8 @@ threadAuthors t = peekCString =<< {#call unsafe thread_get_authors#} t
     thread.
 -}
 threadSubject :: Thread -> IO Subject
-threadSubject t = peekCString =<< {#call unsafe thread_get_subject#} t
+threadSubject t = (\subj -> if subj == nullPtr then return "" else peekCString subj) =<<
+                  {#call unsafe thread_get_subject#} t
 
 -- |Get the date of the oldest message in 'Thread' as a 'Time' value.
 threadOldestDate :: Thread -> IO Time
