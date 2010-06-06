@@ -20,12 +20,13 @@
 -}
 
 --{{{ Description
-{-| Module:     Email.Notmuch
-    Copyright:  (c) Ali Polatel 2010
-    License:    GPL-3
+{-| Module:      Email.Notmuch
+    Copyright:   (c) Ali Polatel 2010
+    License:     GPL-3
 
-    Maintainer: alip@exherbo.org
-    Stability:  provisional
+    Maintainer:  alip@exherbo.org
+    Stability:   provisional
+    Portability: portable, ffi
 
     This module provides interface to the notmuch mail indexing library
 -}
