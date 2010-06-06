@@ -333,7 +333,7 @@ databaseAddMessage :: Database -> FilePath -> IO (Message, IsDuplicate)
 databaseAddMessage d p = withCString p (\p' -> alloca $ \ptr -> do
                          ret <- {#call unsafe database_add_message#} d p' ptr
                          let s = toEnum $ fromIntegral ret
-                         if s == Success || s == DuplicateMessageId
+                         if s `elem` [Success, DuplicateMessageId]
                              then do
                                   msg <- peek ptr
                                   return (msg, s == DuplicateMessageId)
@@ -358,7 +358,7 @@ databaseRemoveMessage :: Database -> FilePath -> IO IsDuplicate
 databaseRemoveMessage d p = do
                             ret <- withCString p ({#call database_remove_message#} d)
                             let s = toEnum $ fromIntegral ret
-                            if s == Success || s == DuplicateMessageId
+                            if s `elem` [Success, DuplicateMessageId]
                                 then return (s == DuplicateMessageId)
                                 else do
                                      errMsg <- statusStr s
@@ -700,11 +700,9 @@ messageAddTag :: Message -> Tag -> IO ()
 messageAddTag m t = do
                     ret <- withCString t ({#call unsafe message_add_tag#} m)
                     let s = toEnum $ fromIntegral ret
-                    if s == Success
-                        then return ()
-                        else do
-                             errMsg <- statusStr s
-                             throw NotmuchError { neStatus = s, neErrMsg = errMsg }
+                    unless (s == Success) $ do
+                                            errMsg <- statusStr s
+                                            throw NotmuchError { neStatus = s, neErrMsg = errMsg }
 
 {-| Remove a tag from the given message.
 
@@ -714,11 +712,9 @@ messageRemoveTag :: Message -> Tag -> IO ()
 messageRemoveTag m t = do
                        ret <- withCString t ({#call unsafe message_remove_tag#} m)
                        let s = toEnum $ fromIntegral ret
-                       if s == Success
-                           then return ()
-                           else do
-                                errMsg <- statusStr s
-                                throw NotmuchError { neStatus = s, neErrMsg = errMsg }
+                       unless (s == Success) $ do
+                                               errMsg <- statusStr s
+                                               throw NotmuchError { neStatus = s, neErrMsg = errMsg }
 
 {-| Remove all tags from the given message.
 
@@ -728,11 +724,9 @@ messageRemoveAllTags :: Message -> IO ()
 messageRemoveAllTags m = do
                          ret <- {#call unsafe message_remove_all_tags#} m
                          let s = toEnum $ fromIntegral ret
-                         if s == Success
-                             then return ()
-                             else do
-                                  errMsg <- statusStr s
-                                  throw NotmuchError { neStatus = s, neErrMsg = errMsg }
+                         unless (s == Success) $ do
+                                                 errMsg <- statusStr s
+                                                 throw NotmuchError { neStatus = s, neErrMsg = errMsg }
 {-|
     Freeze the current state of 'Message' within the 'Database'.
 
@@ -750,11 +744,9 @@ messageFreeze :: Message -> IO ()
 messageFreeze m = do
                   ret <- {#call unsafe message_freeze#} m
                   let s = toEnum $ fromIntegral ret
-                  if s == Success
-                      then return ()
-                      else do
-                           errMsg <- statusStr s
-                           throw NotmuchError { neStatus = s, neErrMsg = errMsg }
+                  unless (s == Success) $ do
+                                          errMsg <- statusStr s
+                                          throw NotmuchError { neStatus = s, neErrMsg = errMsg }
 
 {-|
     Thaw the current 'Message', synchronizing any changes that may have
@@ -766,11 +758,9 @@ messageThaw :: Message -> IO ()
 messageThaw m = do
                 ret <- {#call unsafe message_thaw#} m
                 let s = toEnum $ fromIntegral ret
-                if s == Success
-                    then return ()
-                    else do
-                         errMsg <- statusStr s
-                         throw NotmuchError { neStatus = s, neErrMsg = errMsg }
+                unless (s == Success) $ do
+                                        errMsg <- statusStr s
+                                        throw NotmuchError { neStatus = s, neErrMsg = errMsg }
 
 -- |Destroy a 'Message'
 messageDestroy :: Message -> IO ()
@@ -828,11 +818,9 @@ directorySetMtime :: Directory -> Time -> IO ()
 directorySetMtime d t = do
                         ret <- {#call unsafe directory_set_mtime#} d (cFromEnum t)
                         let s = toEnum $ fromIntegral ret
-                        if s == Success
-                            then return ()
-                            else do
-                                 errMsg <- statusStr s
-                                 throw NotmuchError { neStatus = s, neErrMsg = errMsg }
+                        unless (s == Success) $ do
+                                                errMsg <- statusStr s
+                                                throw NotmuchError { neStatus = s, neErrMsg = errMsg }
 
 
 {-|
