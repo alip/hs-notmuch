@@ -19,6 +19,17 @@
 - Author: Ali Polatel <alip@exherbo.org>
 -}
 
+--{{{ Description
+{-| Module:     Email.Notmuch
+    Copyright:  (c) Ali Polatel 2010
+    License:    GPL-3
+
+    Maintainer: alip@exherbo.org
+    Stability:  provisional
+
+    This module provides interface to the notmuch mail indexing library
+-}
+--}}}
 --{{{ Notes
 -- The functions below are missing from this binding but present in the notmuch library:
 -- - notmuch_database_find_message()
@@ -27,119 +38,117 @@
 --      Reason: Doesn't distinguish between error and count zero
 --}}}
 --{{{ Exports
-module Email.Notmuch (
-    CommaSeparatedString,         -- = String
-    Count,                        -- = Integer
-    Header,                       -- = String
-    Subject,                      -- = String
-    Tag,                          -- = String
-    Time,                         -- = Integer
-    Version,                      -- = Integer
+module Email.Notmuch
+    ( IsDuplicate                  -- = Bool
+    , CommaSeparatedString         -- = String
+    , Count                        -- = Integer
+    , Header                       -- = String
+    , Subject                      -- = String
+    , Tag                          -- = String
+    , Time                         -- = Integer
+    , Version                      -- = Integer
 
-    Status(..),
-    statusStr,                    -- :: Status -> IO String
+    , Status(..)
+    , statusStr                    -- :: Status -> IO String
 
-    DatabaseError,
-    MaildirError,
-    MemoryError,
-    XapianError,
+    , NotmuchError(..)
 
-    Database,                     -- = Ptr NotmuchDatabase
-    DatabaseOpenMode(..),         -- = ModeReadOnly | ModeReadWrite
-    databaseCreate,               -- :: FilePath -> IO Database
-    databaseOpen,                 -- :: FilePath -> DatabaseOpenMode -> IO Database
-    databaseClose,                -- :: Database -> IO ()
-    databasePath,                 -- :: Database -> IO FilePath
-    databaseVersion,              -- :: Database -> IO Version
-    databaseNeedsUpgrade,         -- :: Database -> IO Bool
-    databaseUpgrade,              -- :: Database -> IO Status
-    databaseGetDirectory,         -- :: Database -> FilePath -> IO Directory
-    databaseAddMessage,           -- :: Database -> FilePath -> IO (Status, Message)
-    databaseRemoveMessage,        -- :: Database -> FilePath -> IO Status
-    databaseGetAllTags,           -- :: Database -> IO Tags
+    , Database                     -- = Ptr NotmuchDatabase
+    , DatabaseOpenMode(..)         -- = ModeReadOnly | ModeReadWrite
+    , databaseCreate               -- :: FilePath -> IO (Maybe Database)
+    , databaseOpen                 -- :: FilePath -> DatabaseOpenMode -> IO (Maybe Database)
+    , databaseClose                -- :: Database -> IO ()
+    , databasePath                 -- :: Database -> IO FilePath
+    , databaseVersion              -- :: Database -> IO Version
+    , databaseNeedsUpgrade         -- :: Database -> IO Bool
+    , databaseUpgrade              -- :: Database -> IO ()
+    , databaseGetDirectory         -- :: Database -> FilePath -> IO Directory
+    , databaseAddMessage           -- :: Database -> FilePath -> IO (Message, IsDuplicate)
+    , databaseRemoveMessage        -- :: Database -> FilePath -> IO IsDuplicate
+    , databaseGetAllTags           -- :: Database -> IO (Maybe Tags)
 
-    Query,                        -- = Ptr NotmuchQuery
-    QueryString,                  -- = String
-    QuerySort(..),
-    queryCreate,                  -- :: Database -> QueryString -> IO Query
-    querySetSort,                 -- :: Query -> QuerySort -> ()
-    querySearchThreads,           -- :: Query -> IO Threads
-    querySearchMessages,          -- :: Query -> IO Messages
-    queryDestroy,                 -- :: Query -> IO ()
+    , Query                        -- = Ptr NotmuchQuery
+    , QueryString                  -- = String
+    , QuerySort(..)
+    , queryCreate                  -- :: Database -> QueryString -> IO (Maybe Query)
+    , querySetSort                 -- :: Query -> QuerySort -> ()
+    , querySearchThreads           -- :: Query -> IO Threads
+    , querySearchMessages          -- :: Query -> IO Messages
+    , queryDestroy                 -- :: Query -> IO ()
 
-    Threads,                      -- = Ptr NotmuchThreads
-    threadsValid,                 -- :: Threads -> IO Bool
-    threadsGet,                   -- :: Threads -> IO Thread
-    threadsMoveToNext,            -- :: Threads -> IO ()
-    threadsDestroy,               -- :: Threads -> IO ()
+    , Threads                      -- = Ptr NotmuchThreads
+    , threadsValid                 -- :: Threads -> IO Bool
+    , threadsGet                   -- :: Threads -> IO (Maybe Thread)
+    , threadsMoveToNext            -- :: Threads -> IO ()
+    , threadsDestroy               -- :: Threads -> IO ()
 
-    Thread,                       -- = Ptr NotmuchThread
-    ThreadId,                     -- = String
-    threadId,                     -- :: Thread -> IO ThreadId
-    threadTotalMessages,          -- :: Thread -> IO Count
-    threadTopLevelMessages,       -- :: Thread -> IO Messages
-    threadMatchedMessages,        -- :: Thread -> IO Count
-    threadAuthors,                -- :: Thread -> IO CommaSeparatedString
-    threadSubject,                -- :: Thread -> IO String
-    threadOldestDate,             -- :: Thread -> IO Time
-    threadNewestDate,             -- :: Thread -> IO Time
-    threadTags,                   -- :: Thread -> IO Tags
-    threadDestroy,                -- :: Thread -> IO ()
+    , Thread                       -- = Ptr NotmuchThread
+    , ThreadId                     -- = String
+    , threadId                     -- :: Thread -> IO ThreadId
+    , threadTotalMessages          -- :: Thread -> IO Count
+    , threadTopLevelMessages       -- :: Thread -> IO Messages
+    , threadMatchedMessages        -- :: Thread -> IO Count
+    , threadAuthors                -- :: Thread -> IO CommaSeparatedString
+    , threadSubject                -- :: Thread -> IO String
+    , threadOldestDate             -- :: Thread -> IO Time
+    , threadNewestDate             -- :: Thread -> IO Time
+    , threadTags                   -- :: Thread -> IO Tags
+    , threadDestroy                -- :: Thread -> IO ()
 
-    Messages,                     -- = Ptr NotmuchMessages
-    messagesValid,                -- :: Messages -> IO Bool
-    messagesGet,                  -- :: Messages -> IO Message
-    messagesMoveToNext,           -- :: Messages -> IO ()
-    messagesCollectTags,          -- :: Messages -> IO Tags
-    messagesDestroy,              -- :: Messages -> IO ()
+    , Messages                     -- = Ptr NotmuchMessages
+    , messagesValid                -- :: Messages -> IO Bool
+    , messagesGet                  -- :: Messages -> IO (Maybe Message)
+    , messagesMoveToNext           -- :: Messages -> IO ()
+    , messagesCollectTags          -- :: Messages -> IO (Maybe Tags)
+    , messagesDestroy              -- :: Messages -> IO ()
 
-    Message,                      -- = Ptr NotmuchMessage
-    MessageFlag(..),
-    MessageId,                    -- = String
-    messageId,                    -- :: Message -> IO MessageId
-    messageThreadId,              -- :: Message -> IO ThreadId
-    messageReplies,               -- :: Message -> IO Messages
-    messageFileName,              -- :: Message -> IO FilePath
-    messageGetFlag,               -- :: Message -> MessageFlag -> IO Bool
-    messageSetFlag,               -- :: Message -> MessageFlag -> Bool -> IO ()
-    messageDate,                  -- :: Message -> IO Time
-    messageHeader,                -- :: Message -> Header -> IO String
-    messageTags,                  -- :: Message -> IO Tags
-    messageAddTag,                -- :: Message -> Tag -> IO Status
-    messageRemoveTag,             -- :: Message -> Tag -> IO Status
-    messageRemoveAllTags,         -- :: Message -> IO Status
-    messageFreeze,                -- :: Message -> IO Status
-    messageThaw,                  -- :: Message -> IO Status
-    messageDestroy,               -- :: Message -> IO ()
+    , Message                      -- = Ptr NotmuchMessage
+    , MessageFlag(..)
+    , MessageId                    -- = String
+    , messageId                    -- :: Message -> IO MessageId
+    , messageThreadId              -- :: Message -> IO ThreadId
+    , messageReplies               -- :: Message -> IO Messages
+    , messageFileName              -- :: Message -> IO FilePath
+    , messageGetFlag               -- :: Message -> MessageFlag -> IO Bool
+    , messageSetFlag               -- :: Message -> MessageFlag -> Bool -> IO ()
+    , messageDate                  -- :: Message -> IO Time
+    , messageHeader                -- :: Message -> Header -> IO (Maybe String)
+    , messageTags                  -- :: Message -> IO Tags
+    , messageAddTag                -- :: Message -> Tag -> IO ()
+    , messageRemoveTag             -- :: Message -> Tag -> IO ()
+    , messageRemoveAllTags         -- :: Message -> IO ()
+    , messageFreeze                -- :: Message -> IO ()
+    , messageThaw                  -- :: Message -> IO ()
+    , messageDestroy               -- :: Message -> IO ()
 
-    Tags,                         -- = Ptr NotmuchTags
-    tagsValid,                    -- :: Tags -> IO Bool
-    tagsGet,                      -- :: Tags -> IO Tag
-    tagsMoveToNext,               -- :: Tags -> IO ()
-    tagsDestroy,                  -- :: Tags -> IO ()
+    , Tags                         -- = Ptr NotmuchTags
+    , tagsValid                    -- :: Tags -> IO Bool
+    , tagsGet                      -- :: Tags -> IO Tag
+    , tagsMoveToNext               -- :: Tags -> IO ()
+    , tagsDestroy                  -- :: Tags -> IO ()
 
-    Directory,                    -- = Ptr NotmuchDirectory
-    directorySetMtime,            -- :: Directory -> Time -> IO Status
-    directoryGetMtime,            -- :: Directory -> IO Time
-    directoryGetChildFiles,       -- :: Directory -> IO FileNames
-    directoryGetChildDirectories, -- :: Directory -> IO FileNames
-    directoryDestroy,             -- :: Database -> IO ()
+    , Directory                    -- = Ptr NotmuchDirectory
+    , directorySetMtime            -- :: Directory -> Time -> IO ()
+    , directoryGetMtime            -- :: Directory -> IO Time
+    , directoryGetChildFiles       -- :: Directory -> IO FileNames
+    , directoryGetChildDirectories -- :: Directory -> IO FileNames
+    , directoryDestroy             -- :: Database -> IO ()
 
-    FileNames,                    -- = Ptr NotmuchFileNames
-    filenamesValid,               -- :: FileNames -> IO Bool
-    filenamesGet,                 -- :: FileNames -> IO FilePath
-    filenamesMoveToNext,          -- :: FileNames -> IO ()
-    filenamesDestroy              -- :: FileNames -> IO ()
+    , FileNames                    -- = Ptr NotmuchFileNames
+    , filenamesValid               -- :: FileNames -> IO Bool
+    , filenamesGet                 -- :: FileNames -> IO FilePath
+    , filenamesMoveToNext          -- :: FileNames -> IO ()
+    , filenamesDestroy             -- :: FileNames -> IO ()
     ) where
 --}}}
 --{{{ Imports
-import Control.Exception (Exception, throw)
+import Control.Exception    (Exception, throw)
+import Control.Monad        (unless)
 import Data.Typeable
-
 import Foreign
-import Foreign.C.Types  (CChar, CDouble, CInt, CUInt, CLong)
-import Foreign.C.String (CString, peekCString, withCString)
-import Foreign.Ptr      (nullPtr, nullFunPtr)
+import Foreign.C.Types      (CChar, CDouble, CInt, CUInt, CLong)
+import Foreign.C.String     (CString, peekCString, withCString)
+import Foreign.Ptr          (nullPtr, nullFunPtr)
 --}}}
 --{{{ Types
 #include <notmuch.h>
@@ -153,7 +162,7 @@ import Foreign.Ptr      (nullPtr, nullFunPtr)
 {#enum notmuch_sort_t as QuerySort {underscoreToCase}
     with prefix = "NOTMUCH_SORT" deriving (Eq,Show)#}
 {#enum notmuch_message_flag_t as MessageFlag {underscoreToCase}
-    with prefix = "NOTMUCH_MESSAGE" deriving (Eq, Show)#}
+    with prefix = "NOTMUCH_MESSAGE" deriving (Eq,Show)#}
 
 {#pointer * notmuch_database_t as NotmuchDatabase foreign newtype#}
 {#pointer * notmuch_query_t as NotmuchQuery foreign newtype#}
@@ -164,6 +173,7 @@ import Foreign.Ptr      (nullPtr, nullFunPtr)
 {#pointer * notmuch_tags_t as NotmuchTags foreign newtype#}
 {#pointer * notmuch_directory_t as NotmuchDirectory foreign newtype#}
 {#pointer * notmuch_filenames_t as NotmuchFileNames foreign newtype#}
+type IsDuplicate            = Bool
 type CommaSeparatedString   = String
 type Count                  = Integer
 type Header                 = String
@@ -183,20 +193,17 @@ type Message                = Ptr NotmuchMessage
 type Tags                   = Ptr NotmuchTags
 type Directory              = Ptr NotmuchDirectory
 type FileNames              = Ptr NotmuchFileNames
-data DatabaseError          = DatabaseError deriving(Show,Typeable)
-data MaildirError           = MaildirError  deriving(Show,Typeable)
-data MemoryError            = MemoryError   deriving(Show,Typeable)
-data XapianError            = XapianError   deriving(Show,Typeable)
-instance Exception DatabaseError
-instance Exception MaildirError
-instance Exception MemoryError
-instance Exception XapianError
+data NotmuchError           = NotmuchError { neStatus :: Status
+                                           , neErrMsg :: String
+                                           }
+                                           deriving (Eq,Show,Typeable)
+instance Exception NotmuchError
 --}}}
 --{{{ Local Functions
 cFromEnum :: (Enum a, Integral b) => a -> b
 cFromEnum = fromIntegral . fromEnum
 --}}}
---{{{ Status
+--{{{ Status -> NotmuchError
 -- |Get a string representation of the 'Status' value.
 statusStr :: Status -> IO String
 statusStr = peekCString . {#call pure unsafe status_to_string#} . cFromEnum
@@ -217,12 +224,12 @@ statusStr = peekCString . {#call pure unsafe status_to_string#} . cFromEnum
     very cheap function). Messages contained within 'FilePath' can be added to
     the database by calling 'databaseAddMessage'.
 
-    In case of any failure, this function throws 'DatabaseError', (after
+    In case of any failure, this function returns 'Nothing', (after
     printing an error message on stderr).
 -}
-databaseCreate :: FilePath -> IO Database
+databaseCreate :: FilePath -> IO (Maybe Database)
 databaseCreate p = withCString p {#call unsafe database_create#} >>=
-                   (\db -> if db == nullPtr then throw DatabaseError else return db)
+                   (\db -> if db == nullPtr then return Nothing else return (Just db))
 
 {-|
     Open an existing notmuch database located at 'FilePath'.
@@ -237,12 +244,12 @@ databaseCreate p = withCString p {#call unsafe database_create#} >>=
 
     The caller should call 'databaseClose' when finished with this database.
 
-    In case of any failure, this function throws 'DatabaseError', (after
+    In case of any failure, this function returns 'Nothing', (after
     printing an error message on stderr).
 -}
-databaseOpen :: FilePath -> DatabaseOpenMode -> IO Database
+databaseOpen :: FilePath -> DatabaseOpenMode -> IO (Maybe Database)
 databaseOpen p m = withCString p (flip {#call unsafe database_open#} (cFromEnum m)) >>=
-                   (\db -> if db == nullPtr then throw DatabaseError else return db)
+                   (\db -> if db == nullPtr then return Nothing else return (Just db))
 
 {-|
     Close the given notmuch database, freeing all associated resources.
@@ -280,11 +287,15 @@ databaseNeedsUpgrade d = do
     After opening a database in read-write mode, the client should check if an
     upgrade is needed ('databaseNeedsUpgrade') and if so, upgrade with this
     function before making any modifications.
+
+    Throws 'NotmuchError' in case of errors.
 -}
-databaseUpgrade :: Database -> IO Status
+databaseUpgrade :: Database -> IO ()
 databaseUpgrade d = do
-                    s <- {#call unsafe database_upgrade#} d nullFunPtr nullPtr
-                    return $ toEnum $ fromIntegral s
+                    ret <- {#call unsafe database_upgrade#} d nullFunPtr nullPtr
+                    let s = toEnum $ fromIntegral ret
+                    errMsg <- statusStr s
+                    unless (s /= Success) $ throw NotmuchError { neStatus = s, neErrMsg = errMsg }
 
 {-|
     Retrieve a directory object from the database for 'FilePath'.
@@ -293,11 +304,11 @@ databaseUpgrade d = do
     (see 'databasePath'), or else should be an absolute path
     with initial components that match the path of 'Database'.
 
-    Throws 'XapianError' if a Xapian exception occurs.
+    Returns 'Nothing' if a Xapian exception occurs.
 -}
-databaseGetDirectory :: Database -> FilePath -> IO Directory
+databaseGetDirectory :: Database -> FilePath -> IO (Maybe Directory)
 databaseGetDirectory d p = withCString p ({#call unsafe database_get_directory#} d) >>=
-                           (\dir -> if dir == nullPtr then throw XapianError else return dir)
+                           (\dir -> if dir == nullPtr then return Nothing else return (Just dir))
 
 {-|
     Add a new message to the given notmuch database.
@@ -313,14 +324,22 @@ databaseGetDirectory d p = withCString p ({#call unsafe database_get_directory#}
 
     On successful return 'Message' will be initialized to a message type that
     can be used for things such as adding tags to the just-added message. The
-    user should call 'messageDestroy' when done with the message. On any
-    failure 'Message' will be set to 'nullPtr'.
+    user should call 'messageDestroy' when done with the message.
+
+    On failure this function throws 'NotmuchError'.
 -}
-databaseAddMessage :: Database -> FilePath -> IO (Status, Message)
+databaseAddMessage :: Database -> FilePath -> IO (Message, IsDuplicate)
 databaseAddMessage d p = withCString p (\p' -> alloca $ \ptr -> do
-                         s <- {#call unsafe database_add_message#} d p' ptr
-                         m <- peek ptr
-                         return (toEnum $ fromIntegral s, m))
+                         ret <- {#call unsafe database_add_message#} d p' ptr
+                         let s = toEnum $ fromIntegral ret
+                         if s == Success || s == DuplicateMessageId
+                             then do
+                                  msg <- peek ptr
+                                  return (msg, s == DuplicateMessageId)
+                             else do
+                                  errMsg <- statusStr s
+                                  throw NotmuchError { neStatus = s, neErrMsg = errMsg })
+
 
 {-|
     Remove a message from the given notmuch database.
@@ -331,11 +350,18 @@ databaseAddMessage d p = withCString p (\p' -> alloca $ \ptr -> do
     database for those filenames. When the last filename is removed for a
     particular message, the database content for that message will be entirely
     removed.
+
+    On failure this function throws 'NotmuchError'.
 -}
-databaseRemoveMessage :: Database -> FilePath -> IO Status
+databaseRemoveMessage :: Database -> FilePath -> IO IsDuplicate
 databaseRemoveMessage d p = do
-                            s <- withCString p ({#call database_remove_message#} d)
-                            return $ toEnum $ fromIntegral s
+                            ret <- withCString p ({#call database_remove_message#} d)
+                            let s = toEnum $ fromIntegral ret
+                            if s == Success || s == DuplicateMessageId
+                                then return (s == DuplicateMessageId)
+                                else do
+                                     errMsg <- statusStr s
+                                     throw NotmuchError { neStatus = s, neErrMsg = errMsg }
 
 {-|
     Return a list of all tags found in the database.
@@ -343,11 +369,11 @@ databaseRemoveMessage d p = do
     This function creates a list of all tags found in the database. The
     resulting list contains all tags from all messages found in the database.
 
-    On error this function throws 'XapianError'.
+    Returns 'Nothing' if a Xapian exception occurs.
 -}
-databaseGetAllTags :: Database -> IO Tags
+databaseGetAllTags :: Database -> IO (Maybe Tags)
 databaseGetAllTags d = {#call unsafe database_get_all_tags#} d >>=
-                       (\ts -> if ts == nullPtr then throw XapianError else return ts)
+                       (\ts -> if ts == nullPtr then return Nothing else return (Just ts))
 --}}}
 --{{{ Query
 {-|
@@ -360,11 +386,11 @@ databaseGetAllTags d = {#call unsafe database_get_all_tags#} d >>=
 
     User should call queryDestroy when finished with this query.
 
-    Will throw 'MemoryError' if insufficient memory is available.
+    Returns 'Nothing' if insufficient memory is available.
 -}
-queryCreate :: Database -> QueryString -> IO Query
+queryCreate :: Database -> QueryString -> IO (Maybe Query)
 queryCreate d s = withCString s ({#call unsafe query_create#} d) >>=
-                  (\q -> if q == nullPtr then throw MemoryError else return q)
+                  (\q -> if q == nullPtr then return Nothing else return (Just q))
 
 -- |Specify the sorting desired for this query.
 querySetSort :: Query -> QuerySort -> IO ()
@@ -415,11 +441,11 @@ threadsValid ts = do
     Note: The returned thread belongs to 'Threads' and has a lifetime
     identical to it (and the 'Query' to which it belongs).
 
-    If an out-of-memory situation occurs, this function throws 'MemoryError'.
+    If an out-of-memory situation occurs, this function returns 'Nothing'.
 -}
-threadsGet :: Threads -> IO Thread
+threadsGet :: Threads -> IO (Maybe Thread)
 threadsGet ts = {#call unsafe threads_get#} ts >>=
-                (\t -> if t == nullPtr then throw MemoryError else return t)
+                (\t -> if t == nullPtr then return Nothing else return (Just t))
 
 {-|
     Move the 'Threads' iterator to the next thread.
@@ -546,11 +572,11 @@ messagesValid ms = do
     Note: The returned message belongs to 'Messages' and has a lifetime
     identical to it (and the query to which it belongs).
 
-    If an out-of-memory situation occurs, this function throws 'MemoryError'.
+    If an out-of-memory situation occurs, this function returns 'Nothing'.
 -}
-messagesGet :: Messages -> IO Message
+messagesGet :: Messages -> IO (Maybe Message)
 messagesGet ms = {#call unsafe messages_get#} ms >>=
-                 (\m -> if m == nullPtr then throw MemoryError else return m)
+                 (\m -> if m == nullPtr then return Nothing else return (Just m))
 
 -- |Move the 'Messages' iterator to the next message.
 messagesMoveToNext :: Messages -> IO ()
@@ -567,11 +593,11 @@ messagesMoveToNext = {#call unsafe messages_move_to_next#}
     way how you can iterate over the list again is to recreate the
     message list.
 
-    The function throws 'MemoryError' on error.
+    The function returns 'Nothing' on error.
 -}
-messagesCollectTags :: Messages -> IO Tags
+messagesCollectTags :: Messages -> IO (Maybe Tags)
 messagesCollectTags ms = {#call unsafe messages_collect_tags#} ms >>=
-                         (\ts -> if ts == nullPtr then throw MemoryError else return ts)
+                         (\ts -> if ts == nullPtr then return Nothing else return (Just ts))
 
 -- |Destroy the 'Messages'
 messagesDestroy :: Messages -> IO ()
@@ -648,11 +674,11 @@ messageDate m = do
     Returns an empty string (\"\") if the message does not contain a
     header line matching 'Header'.
 
-    Throws 'MaildirError' if any error occurs.
+    Returns 'Nothing' if any error occurs.
 -}
-messageHeader :: Message -> Header -> IO String
+messageHeader :: Message -> Header -> IO (Maybe String)
 messageHeader m h = withCString h ({#call unsafe message_get_header#} m) >>=
-                    (\v -> if v == nullPtr then throw MaildirError else peekCString v)
+                    (\v -> if v == nullPtr then return Nothing else fmap Just (peekCString v))
 
 {-|
     Get the tags for 'Message', returning a 'Tags' which can be used to iterate
@@ -665,23 +691,47 @@ messageHeader m h = withCString h ({#call unsafe message_get_header#} m) >>=
 messageTags :: Message -> IO Tags
 messageTags = {#call unsafe message_get_tags#}
 
--- |Add a tag to the given message.
-messageAddTag :: Message -> Tag -> IO Status
+{-| Add a tag to the given message.
+
+    Throws 'NotmuchError' on failure.
+-}
+messageAddTag :: Message -> Tag -> IO ()
 messageAddTag m t = do
-                    s <- withCString t ({#call unsafe message_add_tag#} m)
-                    return $ toEnum $ fromIntegral s
+                    ret <- withCString t ({#call unsafe message_add_tag#} m)
+                    let s = toEnum $ fromIntegral ret
+                    if s == Success
+                        then return ()
+                        else do
+                             errMsg <- statusStr s
+                             throw NotmuchError { neStatus = s, neErrMsg = errMsg }
 
--- |Remove a tag from the given message.
-messageRemoveTag :: Message -> Tag -> IO Status
+{-| Remove a tag from the given message.
+
+    Throws 'NotmuchError' on failure.
+-}
+messageRemoveTag :: Message -> Tag -> IO ()
 messageRemoveTag m t = do
-                       s <- withCString t ({#call unsafe message_remove_tag#} m)
-                       return $ toEnum $ fromIntegral s
+                       ret <- withCString t ({#call unsafe message_remove_tag#} m)
+                       let s = toEnum $ fromIntegral ret
+                       if s == Success
+                           then return ()
+                           else do
+                                errMsg <- statusStr s
+                                throw NotmuchError { neStatus = s, neErrMsg = errMsg }
 
--- |Remove all tags from the given message.
-messageRemoveAllTags :: Message -> IO Status
+{-| Remove all tags from the given message.
+
+    Throws 'NotmuchError' on failure.
+-}
+messageRemoveAllTags :: Message -> IO ()
 messageRemoveAllTags m = do
-                         s <- {#call unsafe message_remove_all_tags#} m
-                         return $ toEnum $ fromIntegral s
+                         ret <- {#call unsafe message_remove_all_tags#} m
+                         let s = toEnum $ fromIntegral ret
+                         if s == Success
+                             then return ()
+                             else do
+                                  errMsg <- statusStr s
+                                  throw NotmuchError { neStatus = s, neErrMsg = errMsg }
 {-|
     Freeze the current state of 'Message' within the 'Database'.
 
@@ -692,20 +742,34 @@ messageRemoveAllTags m = do
     Multiple calls to freeze/thaw are valid and these calls will
     "stack". That is there must be as many calls to thaw as to freeze
     before a message is actually thawed.
+
+    Throws 'NotmuchError' on failure.
 -}
-messageFreeze :: Message -> IO Status
+messageFreeze :: Message -> IO ()
 messageFreeze m = do
-                  s <- {#call unsafe message_freeze#} m
-                  return $ toEnum $ fromIntegral s
+                  ret <- {#call unsafe message_freeze#} m
+                  let s = toEnum $ fromIntegral ret
+                  if s == Success
+                      then return ()
+                      else do
+                           errMsg <- statusStr s
+                           throw NotmuchError { neStatus = s, neErrMsg = errMsg }
 
 {-|
     Thaw the current 'Message', synchronizing any changes that may have
     occurred while 'Message' was frozen into the notmuch database.
+
+    Throws 'NotmuchError' on failure.
 -}
-messageThaw :: Message -> IO Status
+messageThaw :: Message -> IO ()
 messageThaw m = do
-                s <- {#call unsafe message_thaw#} m
-                return $ toEnum $ fromIntegral s
+                ret <- {#call unsafe message_thaw#} m
+                let s = toEnum $ fromIntegral ret
+                if s == Success
+                    then return ()
+                    else do
+                         errMsg <- statusStr s
+                         throw NotmuchError { neStatus = s, neErrMsg = errMsg }
 
 -- |Destroy a 'Message'
 messageDestroy :: Message -> IO ()
@@ -756,11 +820,19 @@ tagsDestroy = {#call unsafe tags_destroy#}
     caller to distinguish a timestamp of 0 from a non-existent
     timestamp. So don't store a timestamp of 0 unless you are
     comfortable with that.
+
+    Throws 'NotmuchError' on failure.
 -}
-directorySetMtime :: Directory -> Time -> IO Status
+directorySetMtime :: Directory -> Time -> IO ()
 directorySetMtime d t = do
-                        s <- {#call unsafe directory_set_mtime#} d (cFromEnum t)
-                        return $ toEnum $ fromIntegral s
+                        ret <- {#call unsafe directory_set_mtime#} d (cFromEnum t)
+                        let s = toEnum $ fromIntegral ret
+                        if s == Success
+                            then return ()
+                            else do
+                                 errMsg <- statusStr s
+                                 throw NotmuchError { neStatus = s, neErrMsg = errMsg }
+
 
 {-|
     Get the mtime of a directory, (as previously stored with
