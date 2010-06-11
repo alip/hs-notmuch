@@ -44,7 +44,6 @@ module Email.Notmuch
     , Header                       -- = String
     , Subject                      -- = String
     , Tag                          -- = String
-    , Time                         -- = Integer
     , Version                      -- = Integer
 
     , Status(..)
@@ -90,8 +89,8 @@ module Email.Notmuch
     , threadMatchedMessages        -- :: Thread -> IO Count
     , threadAuthors                -- :: Thread -> IO CommaSeparatedString
     , threadSubject                -- :: Thread -> IO String
-    , threadOldestDate             -- :: Thread -> IO Time
-    , threadNewestDate             -- :: Thread -> IO Time
+    , threadOldestDate             -- :: Thread -> IO CTime
+    , threadNewestDate             -- :: Thread -> IO CTime
     , threadTags                   -- :: Thread -> IO Tags
     , threadDestroy                -- :: Thread -> IO ()
 
@@ -111,7 +110,7 @@ module Email.Notmuch
     , messageFileName              -- :: Message -> IO FilePath
     , messageGetFlag               -- :: Message -> MessageFlag -> IO Bool
     , messageSetFlag               -- :: Message -> MessageFlag -> Bool -> IO ()
-    , messageDate                  -- :: Message -> IO Time
+    , messageDate                  -- :: Message -> IO CTime
     , messageHeader                -- :: Message -> Header -> IO (Maybe String)
     , messageTags                  -- :: Message -> IO Tags
     , messageAddTag                -- :: Message -> Tag -> IO ()
@@ -128,8 +127,8 @@ module Email.Notmuch
     , tagsDestroy                  -- :: Tags -> IO ()
 
     , Directory                    -- = Ptr NotmuchDirectory
-    , directorySetMtime            -- :: Directory -> Time -> IO ()
-    , directoryGetMtime            -- :: Directory -> IO Time
+    , directorySetMtime            -- :: Directory -> CTime -> IO ()
+    , directoryGetMtime            -- :: Directory -> IO CTime
     , directoryGetChildFiles       -- :: Directory -> IO FileNames
     , directoryGetChildDirectories -- :: Directory -> IO FileNames
     , directoryDestroy             -- :: Database -> IO ()
@@ -142,13 +141,13 @@ module Email.Notmuch
     ) where
 --}}}
 --{{{ Imports
-import Control.Exception    (Exception, throw)
-import Control.Monad        (unless)
-import Data.Typeable
+import Control.Exception     (Exception, throw)
+import Control.Monad         (unless)
+import Data.Typeable         (Typeable)
 import Foreign
-import Foreign.C.Types      (CChar, CDouble, CInt, CUInt, CLong)
-import Foreign.C.String     (CString, peekCString, withCString)
-import Foreign.Ptr          (nullPtr, nullFunPtr)
+import Foreign.C.Types       (CChar, CDouble, CInt, CUInt, CLong, CTime)
+import Foreign.C.String      (CString, peekCString, withCString)
+import Foreign.Ptr           (nullPtr, nullFunPtr)
 --}}}
 --{{{ Types
 #include <notmuch.h>
@@ -179,7 +178,6 @@ type Count                  = Integer
 type Header                 = String
 type Subject                = String
 type Tag                    = String
-type Time                   = Integer
 type Version                = Integer
 type QueryString            = String
 type ThreadId               = String
@@ -544,14 +542,14 @@ threadSubject :: Thread -> IO Subject
 threadSubject t = (\subj -> if subj == nullPtr then return "" else peekCString subj) =<<
                   {#call unsafe thread_get_subject#} t
 
--- |Get the date of the oldest message in 'Thread' as a 'Time' value.
-threadOldestDate :: Thread -> IO Time
+-- |Get the date of the oldest message in 'Thread' as a 'CTime' value.
+threadOldestDate :: Thread -> IO CTime
 threadOldestDate t = do
                      d <- {#call unsafe thread_get_oldest_date#} t
                      return $ fromIntegral d
 
--- |Get the date of the newest message in 'Thread' as a 'Time' value.
-threadNewestDate :: Thread -> IO Time
+-- |Get the date of the newest message in 'Thread' as a 'CTime' value.
+threadNewestDate :: Thread -> IO CTime
 threadNewestDate t = do
                      d <- {#call unsafe thread_get_newest_date#} t
                      return $ fromIntegral d
@@ -671,12 +669,12 @@ messageSetFlag m f True  = {#call unsafe message_set_flag#} m (cFromEnum f) 1
 messageSetFlag m f False = {#call unsafe message_set_flag#} m (cFromEnum f) 0
 
 {-|
-    Get the date of 'Message' as a 'Time' value.
+    Get the date of 'Message' as a 'CTime' value.
 
     For the original textual representation of the Date header from the message
     call 'messageHeader' with a header value of \"date\".
 -}
-messageDate :: Message -> IO Time
+messageDate :: Message -> IO CTime
 messageDate m = do
                 t <- {#call unsafe message_get_date#} m
                 return $ fromIntegral t
@@ -829,7 +827,7 @@ tagsDestroy = {#call unsafe tags_destroy#}
 
     Throws 'NotmuchError' on failure.
 -}
-directorySetMtime :: Directory -> Time -> IO ()
+directorySetMtime :: Directory -> CTime -> IO ()
 directorySetMtime d t = do
                         ret <- {#call unsafe directory_set_mtime#} d (cFromEnum t)
                         let s = toEnum $ fromIntegral ret
@@ -844,7 +842,7 @@ directorySetMtime d t = do
 
     Returns 0 if no mtime has previously been stored for this directory.
 -}
-directoryGetMtime :: Directory -> IO Time
+directoryGetMtime :: Directory -> IO CTime
 directoryGetMtime d = do
                       t <- {#call unsafe directory_get_mtime#} d
                       return $ fromIntegral t
