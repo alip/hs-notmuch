@@ -35,8 +35,6 @@
 -- The functions below are missing from this binding but present in the notmuch library:
 -- - notmuch_database_find_message()
 --      Reason: Doesn't distinguish between error and not found
--- - notmuch_query_count_messages()
---      Reason: Doesn't distinguish between error and count zero
 --}}}
 --{{{ Exports
 module Email.Notmuch
@@ -73,6 +71,7 @@ module Email.Notmuch
     , QuerySort(..)
     , queryCreate                  -- :: Database -> QueryString -> IO (Maybe Query)
     , querySetSort                 -- :: Query -> QuerySort -> ()
+    , queryCountMessages           -- :: Query -> IO Integer
     , querySearchThreads           -- :: Query -> IO Threads
     , querySearchMessages          -- :: Query -> IO Messages
     , queryDestroy                 -- :: Query -> IO ()
@@ -396,6 +395,22 @@ queryCreate d s = withCString s ({#call unsafe query_create#} d) >>=
 -- |Specify the sorting desired for this query.
 querySetSort :: Query -> QuerySort -> IO ()
 querySetSort q s = {#call unsafe query_set_sort#} q (cFromEnum s)
+
+{-|
+    Return an estimate of the number of messages matching a search.
+
+    This function performs a search and returns Xapian's best
+    guess as to number of matching messages.
+
+    If a Xapian exception occurs, this function may return 0 (after
+    printing a message).
+
+    Note: This function doesn't distinguish between error and zero count!
+-}
+queryCountMessages :: Query -> IO Integer
+queryCountMessages q = do
+                       c <- {#call unsafe query_count_messages#} q
+                       return $ fromIntegral c
 
 {-|
     Execute a query for threads, returning a 'Threads' type which can be used
